@@ -1,7 +1,7 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=hashicorp.com
 NAMESPACE=paragor
-NAME=jks-trust-store
+NAME=jks
 BINARY=terraform-provider-${NAME}
 VERSION=0.2
 OS_ARCH=darwin_arm64

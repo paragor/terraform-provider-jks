@@ -1,5 +1,5 @@
 .DS_Store
-terraform-provider-jks-trust-store
+terraform-provider-jks
 bin
 
 # Created by https://www.toptal.com/developers/gitignore/api/go,terraform

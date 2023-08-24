@@ -1,4 +1,4 @@
-module terraform-provider-jks-trust-store
+module terraform-provider-jks
 
 go 1.17
 

@@ -5,7 +5,7 @@ terraform {
       version = "~> 3.1.0"
     }
     jks = {
-      source  = "hashicorp.com/outfox/jks-trust-store"
+      source  = "hashicorp.com/outfox/jks"
       version = "~> 0.1"
     }
   }
