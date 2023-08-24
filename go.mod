@@ -1,6 +1,6 @@
 module terraform-provider-jks
 
-go 1.20
+go 1.17
 
 require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.1
