@@ -1,6 +1,6 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=hashicorp.com
-NAMESPACE=outfox
+NAMESPACE=paragor
 NAME=jks-trust-store
 BINARY=terraform-provider-${NAME}
 VERSION=0.2
