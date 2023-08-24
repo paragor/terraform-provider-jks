@@ -1,4 +1,4 @@
-package jks_trust_store
+package jks
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"

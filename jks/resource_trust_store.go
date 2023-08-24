@@ -1,4 +1,4 @@
-package jks_trust_store
+package jks
 
 import (
 	"bufio"
