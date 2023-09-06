@@ -7,12 +7,10 @@ import (
 	"crypto"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/pem"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pavel-v-chernykh/keystore-go/v4"
-	"strings"
 	"time"
 )
 
@@ -50,62 +48,45 @@ func resourceTrustStore() *schema.Resource {
 }
 
 func resourceTrustStoreCreate(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
 	ks := keystore.New()
 
-	chains := d.Get("certificates").([]interface{})
-	if len(chains) == 0 {
-		return diag.Errorf("Empty certificates")
+	chainCertsInterfaces := d.Get("certificates").([]interface{})
+	if len(chainCertsInterfaces) == 0 {
+		return diag.Errorf("empty certificates")
+	}
+	chainCerts := []string{}
+	for _, ci := range chainCertsInterfaces {
+		chainCerts = append(chainCerts, ci.(string))
 	}
 
-	for chainIdx, chain := range chains {
-		rest := []byte(strings.TrimSpace(chain.(string)))
-		certDerData := make([]byte, 0)
-		certIdx := -1
-		for {
-			certIdx += 1
-
-			var block *pem.Block = nil
-			block, rest = pem.Decode(rest)
-			if block == nil && len(rest) == 0 {
-				// Done iterating PEM blocks
-				break
-			} else if block == nil {
-				diags = append(diags, diag.Errorf("chain %d, certificate %d: failed to load PEM", chainIdx, certIdx)...)
-			} else if block.Type != "CERTIFICATE" {
-				diags = append(diags, diag.Errorf("chain %d, certificate %d: expected CERTIFICATE but found %q", chainIdx, certIdx, block.Type)...)
-			}
-
-			certDerData = append(certDerData, block.Bytes...)
-		}
-
+	keystoreCerts, err := transformPemCertsToKeystoreCert(chainCerts)
+	if err != nil {
+		return diag.Errorf("cant transform pem chainCerts to keystore chainCerts: %s", err.Error())
+	}
+	for i, keystoreCert := range keystoreCerts {
 		err := ks.SetTrustedCertificateEntry(
-			fmt.Sprintf("%d", chainIdx),
+			fmt.Sprintf("%d", i),
 			keystore.TrustedCertificateEntry{
 				CreationTime: time.Now(),
-				Certificate: keystore.Certificate{
-					Type:    "X.509",
-					Content: certDerData,
-				},
+				Certificate:  keystoreCert,
 			},
 		)
 		if err != nil {
-			diags = append(diags, diag.Errorf("chain %d: %v", chainIdx, err)...)
+			return diag.Errorf("cant add cert %d to truststore: %s", err.Error())
 		}
 	}
 
 	var jksBuffer bytes.Buffer
 	jksWriter := bufio.NewWriter(&jksBuffer)
 
-	err := ks.Store(jksWriter, []byte(d.Get("password").(string)))
+	err = ks.Store(jksWriter, []byte(d.Get("password").(string)))
 	if err != nil {
-		diags = append(diags, diag.Errorf("Failed to generate JKS: %v", err)...)
+		return diag.Errorf("failed to generate JKS: %s", err.Error())
 	}
 
 	err = jksWriter.Flush()
 	if err != nil {
-		diags = append(diags, diag.Errorf("Failed to flush JKS: %v", err)...)
+		return diag.Errorf("failed to flush JKS: %v", err)
 	}
 
 	jksData := base64.StdEncoding.EncodeToString(jksBuffer.Bytes())
@@ -117,10 +98,10 @@ func resourceTrustStoreCreate(_ context.Context, d *schema.ResourceData, _ inter
 	d.SetId(id)
 
 	if err = d.Set("jks", jksData); err != nil {
-		diags = append(diags, diag.Errorf("Failed to save JKS: %v", err)...)
+		return diag.Errorf("failed to save JKS: %v", err)
 	}
 
-	return diags
+	return nil
 }
 
 func resourceTrustStoreRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {

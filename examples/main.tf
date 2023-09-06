@@ -5,8 +5,8 @@ terraform {
       version = "~> 3.1.0"
     }
     jks = {
-      source  = "hashicorp.com/outfox/jks"
-      version = "~> 0.1"
+      source  = "hashicorp.com/paragor/jks"
+      version = "= 0.6.0"
     }
   }
 }
@@ -36,19 +36,32 @@ resource "tls_self_signed_cert" "ca" {
 
   subject {
     common_name  = "Cluster TLS Root CA"
-    organization = "Outfox, Inc."
+    organization = "Paragor, Inc."
   }
 
   set_subject_key_id = true
 }
 
-resource "jks_trust_store" "ca" {
+resource "jks_trust_store" "this" {
   certificates = [
     tls_self_signed_cert.ca.cert_pem
   ]
   password = "none"
 }
 
-output "ca_jks" {
-  value = jks_trust_store.ca.jks
+resource "jks_key_store" "this" {
+  certificate_chain = [
+    tls_self_signed_cert.ca.cert_pem
+  ]
+  ca = tls_self_signed_cert.ca.cert_pem
+  private_key = tls_private_key.ca.private_key_pem
+  password = "none"
+}
+
+output "ca_trust_store_jks" {
+  value = jks_trust_store.this.jks
+}
+
+output "ca_key_store_jks" {
+  value = jks_key_store.this.jks
 }
