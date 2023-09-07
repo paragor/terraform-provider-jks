@@ -3,7 +3,7 @@ HOSTNAME=hashicorp.com
 NAMESPACE=paragor
 NAME=jks
 BINARY=terraform-provider-${NAME}
-VERSION=0.6.0
+VERSION=0.6.1
 OS_ARCH=darwin_arm64
 
 default: install

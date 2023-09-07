@@ -6,7 +6,7 @@ terraform {
     }
     jks = {
       source  = "hashicorp.com/paragor/jks"
-      version = "= 0.6.0"
+      version = "= 0.6.1"
     }
   }
 }
@@ -46,13 +46,10 @@ resource "jks_trust_store" "this" {
   certificates = [
     tls_self_signed_cert.ca.cert_pem
   ]
-  password = "none"
 }
 
 resource "jks_key_store" "this" {
-  certificate_chain = [
-    tls_self_signed_cert.ca.cert_pem
-  ]
+  certificate_chain = []
   ca = tls_self_signed_cert.ca.cert_pem
   private_key = tls_private_key.ca.private_key_pem
   password = "none"
@@ -64,4 +61,8 @@ output "ca_trust_store_jks" {
 
 output "ca_key_store_jks" {
   value = jks_key_store.this.jks
+}
+
+output "ca_pem" {
+  value = tls_self_signed_cert.ca.cert_pem
 }

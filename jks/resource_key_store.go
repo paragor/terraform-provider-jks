@@ -35,7 +35,6 @@ func resourceKeyStore() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				MinItems: 1,
 				ForceNew: true,
 			},
 			"ca": {
@@ -73,9 +72,6 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 	}
 
 	chainCertsInterfaces := d.Get("certificate_chain").([]interface{})
-	if len(chainCertsInterfaces) == 0 {
-		return diag.Errorf("empty certificates")
-	}
 	chainCerts := []string{}
 	for _, ci := range chainCertsInterfaces {
 		chainCerts = append(chainCerts, ci.(string))
