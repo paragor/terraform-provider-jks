@@ -6,7 +6,7 @@ terraform {
     }
     jks = {
       source  = "hashicorp.com/paragor/jks"
-      version = "= 0.6.1"
+      version = "= 0.6.2"
     }
   }
 }

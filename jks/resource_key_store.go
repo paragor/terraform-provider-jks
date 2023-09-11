@@ -40,7 +40,7 @@ func resourceKeyStore() *schema.Resource {
 			"ca": {
 				Description: "Certificates key to include in generated key store; in PEM format.",
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				ForceNew:    true,
 			},
 			"password": {
@@ -62,13 +62,13 @@ func resourceKeyStore() *schema.Resource {
 func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	ks := keystore.New()
 
-	key, err := decodePrivateKeyBytes([]byte(strings.TrimSpace(d.Get("private_key").(string))))
+	privateKeyDecoded, err := DecodePrivateKeyBytes([]byte(strings.TrimSpace(d.Get("private_key").(string))))
 	if err != nil {
 		return diag.Errorf("cant decode private key: %s", err.Error())
 	}
-	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
+	privateKey, err := x509.MarshalPKCS8PrivateKey(privateKeyDecoded)
 	if err != nil {
-		return diag.Errorf("cant marshal private key: %s", err.Error())
+		return diag.Errorf("cant marshal private key to pkcs8: %s", err.Error())
 	}
 
 	chainCertsInterfaces := d.Get("certificate_chain").([]interface{})
@@ -85,7 +85,7 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 		"certificate",
 		keystore.PrivateKeyEntry{
 			CreationTime:     time.Now(),
-			PrivateKey:       keyDER,
+			PrivateKey:       privateKey,
 			CertificateChain: keystoreCerts,
 		},
 		[]byte(d.Get("password").(string)),
@@ -94,19 +94,22 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 		return diag.Errorf("cant set private key entry %s", err.Error())
 	}
 
-	caCerts, err := transformPemCertsToKeystoreCert([]string{strings.TrimSpace(d.Get("ca").(string))})
-	if err != nil {
-		return diag.Errorf("cant ca pem to keystore format: %s", err.Error())
-	}
-	err = ks.SetTrustedCertificateEntry(
-		"ca",
-		keystore.TrustedCertificateEntry{
-			CreationTime: time.Now(),
-			Certificate:  caCerts[0],
-		},
-	)
-	if err != nil {
-		return diag.Errorf("cant set ca entry %s", err.Error())
+	caPem := strings.TrimSpace(d.Get("ca").(string))
+	if len(caPem) > 0 {
+		caCerts, err := transformPemCertsToKeystoreCert([]string{caPem})
+		if err != nil {
+			return diag.Errorf("cant ca pem to keystore format: %s", err.Error())
+		}
+		err = ks.SetTrustedCertificateEntry(
+			"ca",
+			keystore.TrustedCertificateEntry{
+				CreationTime: time.Now(),
+				Certificate:  caCerts[0],
+			},
+		)
+		if err != nil {
+			return diag.Errorf("cant set ca entry %s", err.Error())
+		}
 	}
 
 	var jksBuffer bytes.Buffer

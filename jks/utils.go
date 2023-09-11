@@ -13,10 +13,7 @@ func transformPemCertsToKeystoreCert(certs []string) ([]keystore.Certificate, er
 	keystoreCerts := []keystore.Certificate{}
 	for i, cert := range certs {
 		cert = strings.TrimSpace(cert)
-		block, rest := pem.Decode([]byte(cert))
-		if len(rest) > 0 {
-			return nil, fmt.Errorf("%d pem file containes more than one cert", i)
-		}
+		block, _ := pem.Decode([]byte(cert))
 		if block == nil {
 			return nil, fmt.Errorf("%d pem file does not contains cert", i)
 		}
@@ -31,7 +28,9 @@ func transformPemCertsToKeystoreCert(certs []string) ([]keystore.Certificate, er
 	return keystoreCerts, nil
 }
 
-func decodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
+// DecodePrivateKeyBytes will decode a PEM encoded private key into a crypto.Signer.
+// It supports ECDSA and RSA private keys only. All other types will return err.
+func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 	// decode the private key pem
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
