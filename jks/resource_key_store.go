@@ -35,6 +35,7 @@ func resourceKeyStore() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				MinItems: 1,
 				ForceNew: true,
 			},
 			"ca": {
@@ -46,8 +47,7 @@ func resourceKeyStore() *schema.Resource {
 			"password": {
 				Description: "Password to secure key store. Defaults to empty string.",
 				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "",
+				Required:    true,
 				ForceNew:    true,
 			},
 			"jks": {
@@ -112,8 +112,8 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 		}
 	}
 
-	var jksBuffer bytes.Buffer
-	jksWriter := bufio.NewWriter(&jksBuffer)
+	jksBuffer := bytes.NewBuffer(nil)
+	jksWriter := bufio.NewWriter(jksBuffer)
 
 	err = ks.Store(jksWriter, []byte(d.Get("password").(string)))
 	if err != nil {
@@ -128,9 +128,14 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 	jksData := base64.StdEncoding.EncodeToString(jksBuffer.Bytes())
 
 	idHash := crypto.SHA1.New()
-	idHash.Write([]byte(jksData))
-
+	idHash.Write([]byte(strings.TrimSpace(d.Get("private_key").(string))))
+	idHash.Write([]byte(d.Get("password").(string)))
+	idHash.Write([]byte(strings.TrimSpace(d.Get("ca").(string))))
+	for _, chain := range chainCerts {
+		idHash.Write([]byte(strings.TrimSpace(chain)))
+	}
 	id := hex.EncodeToString(idHash.Sum([]byte{}))
+
 	d.SetId(id)
 
 	if err = d.Set("jks", jksData); err != nil {
