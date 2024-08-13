@@ -127,16 +127,7 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 
 	jksData := base64.StdEncoding.EncodeToString(jksBuffer.Bytes())
 
-	idHash := crypto.SHA1.New()
-	idHash.Write([]byte(strings.TrimSpace(d.Get("private_key").(string))))
-	idHash.Write([]byte(d.Get("password").(string)))
-	idHash.Write([]byte(strings.TrimSpace(d.Get("ca").(string))))
-	for _, chain := range chainCerts {
-		idHash.Write([]byte(strings.TrimSpace(chain)))
-	}
-	id := hex.EncodeToString(idHash.Sum([]byte{}))
-
-	d.SetId(id)
+	d.SetId(resourceKeyStoreGetId(d))
 
 	if err = d.Set("jks", jksData); err != nil {
 		return diag.Errorf("Failed to save JKS: %v", err)
@@ -145,7 +136,22 @@ func resourceKeyStoreCreate(_ context.Context, d *schema.ResourceData, _ interfa
 	return nil
 }
 
+func resourceKeyStoreGetId(d *schema.ResourceData) string {
+	idHash := crypto.SHA1.New()
+	idHash.Write([]byte(d.Get("private_key").(string)))
+	idHash.Write([]byte(d.Get("ca").(string)))
+	idHash.Write([]byte(d.Get("password").(string)))
+	for _, ci := range d.Get("certificate_chain").([]interface{}) {
+		idHash.Write([]byte(ci.(string)))
+	}
+	id := hex.EncodeToString(idHash.Sum([]byte{}))
+	return id
+}
+
 func resourceKeyStoreRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	if d.Id() == resourceKeyStoreGetId(d) {
+		return nil
+	}
 	return resourceKeyStoreCreate(ctx, d, m)
 }
 

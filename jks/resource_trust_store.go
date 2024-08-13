@@ -109,21 +109,10 @@ func resourceTrustStoreRead(ctx context.Context, d *schema.ResourceData, m inter
 }
 
 func resourceTrustStoreGetId(d *schema.ResourceData) string {
-	chainCertsInterfaces := d.Get("certificates").([]interface{})
-	if len(chainCertsInterfaces) == 0 {
-		return ""
-	}
-	chainCerts := []string{}
-	for _, ci := range chainCertsInterfaces {
-		chainCerts = append(chainCerts, ci.(string))
-	}
-
-	password := d.Get("password").(string)
 	idHash := crypto.SHA1.New()
-
-	idHash.Write([]byte(password))
-	for _, cert := range chainCerts {
-		idHash.Write([]byte(cert))
+	idHash.Write([]byte(d.Get("password").(string)))
+	for _, ci := range d.Get("certificates").([]interface{}) {
+		idHash.Write([]byte(ci.(string)))
 	}
 	id := hex.EncodeToString(idHash.Sum([]byte{}))
 	return id
