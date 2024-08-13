@@ -92,14 +92,7 @@ func resourceTrustStoreCreate(_ context.Context, d *schema.ResourceData, _ inter
 
 	jksData := base64.StdEncoding.EncodeToString(jksBuffer.Bytes())
 
-	idHash := crypto.SHA1.New()
-	idHash.Write([]byte(password))
-	for _, cert := range chainCerts {
-		idHash.Write([]byte(cert))
-	}
-
-	id := hex.EncodeToString(idHash.Sum([]byte{}))
-	d.SetId(id)
+	d.SetId(resourceTrustStoreGetId(d))
 
 	if err = d.Set("jks", jksData); err != nil {
 		return diag.Errorf("failed to save JKS: %v", err)
@@ -109,7 +102,31 @@ func resourceTrustStoreCreate(_ context.Context, d *schema.ResourceData, _ inter
 }
 
 func resourceTrustStoreRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	if d.Id() == resourceTrustStoreGetId(d) {
+		return nil
+	}
 	return resourceTrustStoreCreate(ctx, d, m)
+}
+
+func resourceTrustStoreGetId(d *schema.ResourceData) string {
+	chainCertsInterfaces := d.Get("certificates").([]interface{})
+	if len(chainCertsInterfaces) == 0 {
+		return ""
+	}
+	chainCerts := []string{}
+	for _, ci := range chainCertsInterfaces {
+		chainCerts = append(chainCerts, ci.(string))
+	}
+
+	password := d.Get("password").(string)
+	idHash := crypto.SHA1.New()
+
+	idHash.Write([]byte(password))
+	for _, cert := range chainCerts {
+		idHash.Write([]byte(cert))
+	}
+	id := hex.EncodeToString(idHash.Sum([]byte{}))
+	return id
 }
 
 func resourceTrustStoreDelete(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
