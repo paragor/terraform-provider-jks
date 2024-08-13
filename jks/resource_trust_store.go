@@ -79,7 +79,8 @@ func resourceTrustStoreCreate(_ context.Context, d *schema.ResourceData, _ inter
 	var jksBuffer bytes.Buffer
 	jksWriter := bufio.NewWriter(&jksBuffer)
 
-	err = ks.Store(jksWriter, []byte(d.Get("password").(string)))
+	password := d.Get("password").(string)
+	err = ks.Store(jksWriter, []byte(password))
 	if err != nil {
 		return diag.Errorf("failed to generate JKS: %s", err.Error())
 	}
@@ -92,7 +93,10 @@ func resourceTrustStoreCreate(_ context.Context, d *schema.ResourceData, _ inter
 	jksData := base64.StdEncoding.EncodeToString(jksBuffer.Bytes())
 
 	idHash := crypto.SHA1.New()
-	idHash.Write([]byte(jksData))
+	idHash.Write([]byte(password))
+	for _, cert := range chainCerts {
+		idHash.Write([]byte(cert))
+	}
 
 	id := hex.EncodeToString(idHash.Sum([]byte{}))
 	d.SetId(id)
